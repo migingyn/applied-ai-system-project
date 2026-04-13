@@ -1,33 +1,41 @@
 """
 Command line runner for the Music Recommender Simulation.
-
-This file helps you quickly run and test your recommender.
-
-You will implement the functions in recommender.py:
-- load_songs
-- score_song
-- recommend_songs
+Runs the recommender for multiple user profiles to demonstrate behavior.
 """
 
 from src.recommender import load_songs, recommend_songs
 
 
-def main() -> None:
-    songs = load_songs("data/songs.csv") 
+PROFILES = {
+    "Happy Pop Fan": {"genre": "pop", "mood": "happy", "energy": 0.8},
+    "Chill Lofi Listener": {"genre": "lofi", "mood": "chill", "energy": 0.35},
+    "High-Energy EDM Listener": {"genre": "edm", "mood": "intense", "energy": 0.95},
+    "Acoustic Folk Listener": {"genre": "folk", "mood": "peaceful", "energy": 0.3},
+}
 
-    # Starter example profile
-    user_prefs = {"genre": "pop", "mood": "happy", "energy": 0.8}
+
+def run_profile(name: str, user_prefs: dict, songs: list) -> None:
+    print(f"\n{'='*55}")
+    print(f"  Profile: {name}")
+    print(f"  Prefs:   {user_prefs}")
+    print(f"{'='*55}")
 
     recommendations = recommend_songs(user_prefs, songs, k=5)
 
-    print("\nTop recommendations:\n")
-    for rec in recommendations:
-        # You decide the structure of each returned item.
-        # A common pattern is: (song, score, explanation)
-        song, score, explanation = rec
-        print(f"{song['title']} - Score: {score:.2f}")
-        print(f"Because: {explanation}")
-        print()
+    for i, (song, score, explanation) in enumerate(recommendations, start=1):
+        print(f"\n  #{i}: {song['title']} by {song['artist']}")
+        print(f"      Genre: {song['genre']} | Mood: {song['mood']} | Energy: {song['energy']}")
+        print(f"      Score: {score:.2f}")
+        print(f"      Why:   {explanation}")
+
+
+def main() -> None:
+    songs = load_songs("data/songs.csv")
+
+    for name, prefs in PROFILES.items():
+        run_profile(name, prefs, songs)
+
+    print(f"\n{'='*55}")
 
 
 if __name__ == "__main__":

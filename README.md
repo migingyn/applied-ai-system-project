@@ -101,47 +101,173 @@ pytest
 
 ## Experiments You Tried
 
-### Experiment 1 — Default "Happy Pop" Profile
+Run all profiles yourself with: `python -m src.main`
+
+---
+
+### Profile 1 — Happy Pop Fan
 
 **Profile:** `{"genre": "pop", "mood": "happy", "energy": 0.8}`
 
-**Top results:** Sunrise City (pop/happy/0.82) ranked first with score 4.47, Gym Hero (pop/intense/0.93) second at 2.47. Rooftop Lights (indie pop/happy) placed third.
+```
+=======================================================
+  Profile: Happy Pop Fan
+  Prefs:   {'genre': 'pop', 'mood': 'happy', 'energy': 0.8}
+=======================================================
 
-**Observation:** The genre weight of 2.0 dominates. Even though Gym Hero is intense (wrong mood), it still scores higher than non-pop songs because of the genre match alone.
+  #1: Sunrise City by Neon Echo
+      Genre: pop | Mood: happy | Energy: 0.82
+      Score: 4.47
+      Why:   genre match (+2.0); mood match (+1.0); energy similarity (+1.47)
+
+  #2: Gym Hero by Max Pulse
+      Genre: pop | Mood: intense | Energy: 0.93
+      Score: 3.30
+      Why:   genre match (+2.0); energy similarity (+1.30)
+
+  #3: Rooftop Lights by Indigo Parade
+      Genre: indie pop | Mood: happy | Energy: 0.76
+      Score: 2.44
+      Why:   mood match (+1.0); energy similarity (+1.44)
+
+  #4: Street Cipher by Kade Ramos
+      Genre: hip-hop | Mood: confident | Energy: 0.77
+      Score: 1.46
+      Why:   energy similarity (+1.46)
+
+  #5: Night Drive Loop by Neon Echo
+      Genre: synthwave | Mood: moody | Energy: 0.75
+      Score: 1.42
+      Why:   energy similarity (+1.42)
+```
+
+**Observation:** Genre weight (2.0) dominates the rankings. Sunrise City is a near-perfect match (genre + mood + energy). Gym Hero ranks second despite having the wrong mood because the genre match alone is worth more than a mood match in a different genre. Rooftop Lights places third from mood match alone — "indie pop" doesn't count as a genre match for "pop."
 
 ---
 
-### Experiment 2 — "Chill Lofi" Profile
+### Profile 2 — Chill Lofi Listener
 
 **Profile:** `{"genre": "lofi", "mood": "chill", "energy": 0.35}`
 
-**Top results:** Library Rain ranked first (lofi + chill + energy 0.35), Midnight Coding second (lofi + chill + energy 0.42). Focus Flow third (lofi but wrong mood: focused).
+```
+=======================================================
+  Profile: Chill Lofi Listener
+  Prefs:   {'genre': 'lofi', 'mood': 'chill', 'energy': 0.35}
+=======================================================
 
-**Observation:** When both genre and mood match, the energy score provides the tiebreaker. Library Rain's 0.35 energy is an exact match, so it edged out Midnight Coding (0.42).
+  #1: Library Rain by Paper Lanterns
+      Genre: lofi | Mood: chill | Energy: 0.35
+      Score: 4.50
+      Why:   genre match (+2.0); mood match (+1.0); energy similarity (+1.50)
+
+  #2: Midnight Coding by LoRoom
+      Genre: lofi | Mood: chill | Energy: 0.42
+      Score: 4.40
+      Why:   genre match (+2.0); mood match (+1.0); energy similarity (+1.40)
+
+  #3: Focus Flow by LoRoom
+      Genre: lofi | Mood: focused | Energy: 0.4
+      Score: 3.42
+      Why:   genre match (+2.0); energy similarity (+1.42)
+
+  #4: Spacewalk Thoughts by Orbit Bloom
+      Genre: ambient | Mood: chill | Energy: 0.28
+      Score: 2.40
+      Why:   mood match (+1.0); energy similarity (+1.40)
+
+  #5: Coffee Shop Stories by Slow Stereo
+      Genre: jazz | Mood: relaxed | Energy: 0.37
+      Score: 1.47
+      Why:   energy similarity (+1.47)
+```
+
+**Observation:** Both genre and mood match for the top two songs; energy becomes the tiebreaker. Library Rain (energy 0.35) scores a perfect 1.50 energy similarity because it exactly matches the target. The top 3 are all lofi tracks, showing that a well-represented genre dominates the list even when mood doesn't match (#3, Focus Flow).
+
+**Comparison with Happy Pop:** The output is completely different — both genre and energy are on opposite ends of the spectrum. Happy Pop surfaces loud, upbeat tracks; Chill Lofi surfaces quiet, low-energy tracks. This confirms the scoring formula is sensitive to all three features.
 
 ---
 
-### Experiment 3 — "Intense Rock" Profile
+### Profile 3 — High-Energy EDM Listener
 
-**Profile:** `{"genre": "rock", "mood": "intense", "energy": 0.9}`
+**Profile:** `{"genre": "edm", "mood": "intense", "energy": 0.95}`
 
-**Top results:** Storm Runner ranked first (rock/intense/0.91 — nearly perfect match, score 4.49). Gym Hero second (pop/intense — mood match + energy close). Bass Drop Theory third (edm/intense — mood match + high energy).
+```
+=======================================================
+  Profile: High-Energy EDM Listener
+  Prefs:   {'genre': 'edm', 'mood': 'intense', 'energy': 0.95}
+=======================================================
 
-**Observation:** The system correctly distinguished intense rock from chill lofi. However, genre dominance means pop and edm tracks with matching moods ranked higher than rock tracks with mismatched moods.
+  #1: Bass Drop Theory by Flux Engine
+      Genre: edm | Mood: intense | Energy: 0.94
+      Score: 4.48
+      Why:   genre match (+2.0); mood match (+1.0); energy similarity (+1.48)
+
+  #2: Circuit Breaker by Voltage Drop
+      Genre: edm | Mood: energetic | Energy: 0.96
+      Score: 3.48
+      Why:   genre match (+2.0); energy similarity (+1.48)
+
+  #3: Gym Hero by Max Pulse
+      Genre: pop | Mood: intense | Energy: 0.93
+      Score: 2.47
+      Why:   mood match (+1.0); energy similarity (+1.47)
+
+  #4: Storm Runner by Voltline
+      Genre: rock | Mood: intense | Energy: 0.91
+      Score: 2.44
+      Why:   mood match (+1.0); energy similarity (+1.44)
+
+  #5: Sunrise City by Neon Echo
+      Genre: pop | Mood: happy | Energy: 0.82
+      Score: 1.30
+      Why:   energy similarity (+1.30)
+```
+
+**Observation:** The EDM profile correctly surfaces both EDM tracks first. Positions #3 and #4 are non-EDM songs that share the "intense" mood and high energy — showing that mood + energy can partially substitute for a missing genre match. The Chill Lofi songs disappear entirely from the top 5 because their energy (0.35–0.42) is far from the target of 0.95.
+
+**Comparison with Chill Lofi:** These two profiles produce completely non-overlapping top-5 lists. EDM favors loud, intense tracks with energy near 1.0; Chill Lofi favors quiet, focused tracks with energy near 0.35. This is the clearest demonstration that the energy dimension meaningfully separates different listener types.
 
 ---
 
-### Experiment 4 — Weight Shift (doubling energy, halving genre)
+### Profile 4 — Acoustic Folk Listener
 
-Changed genre weight to 1.0 and energy cap to 3.0. Rankings became much more energy-driven — high-energy EDM and rock tracks floated up even for the "happy pop" profile. This confirmed that the default 2.0 genre weight is appropriate for capturing user intent.
+**Profile:** `{"genre": "folk", "mood": "peaceful", "energy": 0.3}`
 
----
+```
+=======================================================
+  Profile: Acoustic Folk Listener
+  Prefs:   {'genre': 'folk', 'mood': 'peaceful', 'energy': 0.3}
+=======================================================
 
-### Experiment 5 — "Adversarial" Profile (conflicting preferences)
+  #1: Mountain High by Cedar & Stone
+      Genre: folk | Mood: peaceful | Energy: 0.33
+      Score: 4.46
+      Why:   genre match (+2.0); mood match (+1.0); energy similarity (+1.46)
 
-**Profile:** `{"genre": "ambient", "mood": "intense", "energy": 0.9}`
+  #2: Cathedral Echo by Aria Collective
+      Genre: classical | Mood: peaceful | Energy: 0.22
+      Score: 2.38
+      Why:   mood match (+1.0); energy similarity (+1.38)
 
-**Observation:** No song matched both ambient genre and intense mood. Gym Hero (pop/intense/0.93) scored highest at 2.49 — mood and energy dominated over genre. This exposed a gap: the system cannot handle nuanced preferences like "ambient but energetic" because our catalog has no such song.
+  #3: Spacewalk Thoughts by Orbit Bloom
+      Genre: ambient | Mood: chill | Energy: 0.28
+      Score: 1.47
+      Why:   energy similarity (+1.47)
+
+  #4: Library Rain by Paper Lanterns
+      Genre: lofi | Mood: chill | Energy: 0.35
+      Score: 1.42
+      Why:   energy similarity (+1.42)
+
+  #5: Coffee Shop Stories by Slow Stereo
+      Genre: jazz | Mood: relaxed | Energy: 0.37
+      Score: 1.40
+      Why:   energy similarity (+1.40)
+```
+
+**Observation:** Only one folk song exists in the catalog, so after the #1 result there are no more genre matches. The remaining slots are filled by low-energy songs from classical, ambient, lofi, and jazz — correct in "vibe" but not in genre. This highlights the small catalog problem: niche genres have only one representative, leaving no diversity in the results.
+
+**Comparison with EDM:** These profiles share zero overlap in their top 5. EDM surfaces high-energy electronic tracks; Folk surfaces quiet acoustic tracks. This pair best illustrates how the energy dimension alone can fully separate listener types even without relying on genre matches.
 
 ---
 
