@@ -65,6 +65,10 @@ Top K Recommendations (title, score, explanation)
 
 Real-world recommenders like Spotify and YouTube work on the same loop principle but at a scale of millions of songs and users. They also incorporate collaborative filtering (what similar users liked) and use neural networks to embed songs in high-dimensional feature space. Our version is transparent and rule-based, which makes it easy to inspect and explain — a real strength for an educational context.
 
+### Terminal Output
+
+<img width="425" height="835" alt="terminal_output_profiles" src="https://github.com/user-attachments/assets/c41a20a6-bbf3-4676-aa01-e634263bcc28" />
+
 ---
 
 ## Getting Started
