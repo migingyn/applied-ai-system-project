@@ -5,10 +5,13 @@ Flow:
   1. Parse — Claude interprets the user's natural language query into structured preferences
   2. Retrieve — rule-based scoring selects top candidate songs from the catalog
   3. Generate — Claude writes a personalized response grounded in the retrieved songs
+             and enriched with narrative descriptions from a second data source
+             (data/song_descriptions.json).
 """
 import json
 import logging
 import os
+from pathlib import Path
 
 import anthropic
 
@@ -38,6 +41,18 @@ Mention specific song titles and connect them to what the user asked for. Keep i
 _FALLBACK_PREFS = {"genre": "pop", "mood": "happy", "energy": 0.5}
 
 _DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+
+_DESCRIPTIONS_PATH = Path(__file__).parent.parent / "data" / "song_descriptions.json"
+
+
+def _load_descriptions() -> dict:
+    """Load song narrative descriptions from the second data source (song_descriptions.json)."""
+    try:
+        with open(_DESCRIPTIONS_PATH, encoding="utf-8") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError) as exc:
+        logger.warning("Could not load song descriptions (%s); skipping enrichment", exc)
+        return {}
 
 
 def _make_client() -> anthropic.Anthropic:
