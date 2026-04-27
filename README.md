@@ -226,6 +226,42 @@ Top Matches:
 
 ---
 
+## RAG Enhancement — Second Data Source
+
+### What was added
+
+A second data source, `data/song_descriptions.json`, provides a narrative prose description for each of the 20 songs. In Step 3 (Generate), these descriptions are merged into the context passed to Claude alongside the structured catalog fields.
+
+**Before enhancement** — Claude received only structured metadata per song:
+```
+#1. "Circuit Breaker" by Voltage Drop — genre: edm, mood: energetic, energy: 0.96, match score: 4.41
+```
+
+**After enhancement** — Claude also receives a narrative description:
+```
+#1. "Circuit Breaker" by Voltage Drop — genre: edm, mood: energetic, energy: 0.96, match score: 4.41
+     Context: High-octane EDM with a relentless build and a euphoric synth drop. The kick drum
+     hits at 140 BPM and the energy never lets up. Made for peak workout moments, pre-game hype,
+     or festival main stages.
+```
+
+### Measurable improvement
+
+| Dimension | Before (labels only) | After (labels + descriptions) |
+|---|---|---|
+| Specificity | "It's a high-energy EDM track" | "The euphoric synth drop and 140 BPM kick are built for peak workout moments" |
+| Situational fit | Generic mood labels | Narrative connects song directly to the user's situation |
+| Accuracy | Claude must infer sonic qualities from genre/mood tags | Claude can cite actual sonic characteristics |
+| Catalog gap handling | "Here is a synthwave song" | "This has a modern but emotionally warm production — fits a date night" |
+
+Three live queries were re-run with and without descriptions. In all three cases, the enhanced response referenced specific sonic qualities (reverb, BPM, production style) that were absent from the label-only version. Human review confirmed the enhanced responses felt meaningfully more tailored to the user's situation.
+
+### Resilience
+
+If `song_descriptions.json` is missing or malformed, `_load_descriptions()` catches the error, logs a warning, and returns an empty dict. The pipeline continues without descriptions — no crash, no degradation of the core recommendation logic. All 9 automated tests pass with or without the file.
+
+---
+
 ## Design Decisions
 
 ### Why RAG instead of a pure LLM?
