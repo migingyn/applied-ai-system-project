@@ -128,7 +128,17 @@ The second surprise was the Library Rain case: Claude surfaced that song in its 
 
 ---
 
-## 11. Future Work
+## 11. RAG Enhancement — Second Data Source
+
+The retrieval system was extended with a second data source: `data/song_descriptions.json`. This file provides a narrative prose description for each song in the catalog. In the Generate step (Step 3), these descriptions are merged into the context passed to Claude so it can reference specific sonic qualities ("a 140 BPM kick drum that never lets up") rather than only structured labels (genre: edm, energy: 0.96).
+
+**Why this measurably improves output quality:** Genre and mood labels are categorical — they tell Claude *what type* of song something is, not *what it sounds or feels like*. Descriptions give Claude the material to write responses that connect specific sonic qualities to the user's situation. A user asking for "music for a rainy afternoon" gets a response that mentions rain sounds woven into Library Rain's mix, not just "this is a chill lofi song."
+
+**Implementation:** `_load_descriptions()` loads the JSON at generation time. If the file is missing or malformed, it returns an empty dict and the pipeline continues without enrichment — no crash, no regression in existing behavior. All 9 automated tests pass unchanged.
+
+---
+
+## 12. Future Work
 
 1. Genre similarity scoring (partial credit for related genres)
 2. Learned weights from user feedback
