@@ -1,294 +1,264 @@
-# 🎵 Music Recommender Simulation
+# VibeFinder — AI Music Recommender
 
-## Project Summary
+## Original Project (Modules 1–3)
 
-This project is a content-based music recommender built from scratch in Python. It loads a catalog of songs from a CSV file, scores each song against a user's taste profile, and returns a ranked list of the top matches with plain-language explanations.
-
-The recommender uses three features, genre, mood, and energy, to calculate a compatibility score for every song. Genre matching carries the most weight (+2.0 points), followed by mood (+1.0 point), with energy similarity contributing up to +1.5 points based on how close the song's energy level is to the user's target. Songs are then sorted from highest to lowest score and the top results are printed to the terminal.
+**VibeFinder 1.0** was a rule-based, content-based music recommender built entirely from scratch in Python. Given a hardcoded user profile (genre, mood, and target energy level), the system scored every song in a 20-track CSV catalog using a fixed formula — genre match worth +2.0, mood match +1.0, and energy proximity up to +1.5 — and returned a ranked top-5 list with plain-language explanations. It ran as a batch script across four listener profiles (Happy Pop Fan, Chill Lofi Listener, High-Energy EDM Listener, Acoustic Folk Listener) with no natural language input, no AI, and no external API calls.
 
 ---
 
-## How The System Works
+## Title and Summary
 
-### Features used per `Song`
-
-| Feature | Type | Description |
-|---|---|---|
-| `genre` | string | Musical category (pop, lofi, rock, edm, etc.) |
-| `mood` | string | Emotional tone (happy, chill, intense, sad, etc.) |
-| `energy` | float 0–1 | How loud and active the track feels |
-| `tempo_bpm` | integer | Beats per minute (stored but not scored in v1) |
-| `valence` | float 0–1 | Musical positivity (stored but not scored in v1) |
-| `danceability` | float 0–1 | How suitable the track is for dancing |
-| `acousticness` | float 0–1 | How acoustic vs electronic the track sounds |
-
-### What `UserProfile` stores
-
-- `favorite_genre` — the genre the user prefers most
-- `favorite_mood` — the mood they want right now
-- `target_energy` — a 0–1 value for how intense they want the music
-- `likes_acoustic` — boolean bonus flag; adds +0.5 for acoustic songs above 0.6
-
-### Scoring rule (one song)
-
-```
-score = 0
-if song.genre == user.genre:   score += 2.0   # genre match
-if song.mood  == user.mood:    score += 1.0   # mood match
-energy_gap = |user.energy - song.energy|
-score += 1.5 * (1 - energy_gap)               # energy proximity (max 1.5)
-if user.likes_acoustic and song.acousticness > 0.6:
-    score += 0.5                               # acoustic bonus
-```
-
-### Ranking rule (all songs)
-
-The `recommend_songs()` function loops through every song in the catalog, calls `score_song` to get a numeric score, then uses Python's `sorted()` (returns a new sorted list, leaving the original intact) to rank all songs from highest to lowest score. The top `k` results are returned as `(song, score, explanation)` tuples.
-
-**Data flow:**
-
-```
-User Preferences
-      │
-      ▼
-Loop over every song in songs.csv
-      │
-      ▼
-score_song(user_prefs, song) → numeric score + reasons list
-      │
-      ▼
-sorted(all_scored_songs, key=score, reverse=True)
-      │
-      ▼
-Top K Recommendations (title, score, explanation)
-```
-
-Real-world recommenders like Spotify and YouTube work on the same loop principle but at a scale of millions of songs and users. They also incorporate collaborative filtering (what similar users liked) and use neural networks to embed songs in high-dimensional feature space. Our version is transparent and rule-based, which makes it easy to inspect and explain — a real strength for an educational context.
-
-### Terminal Output
-
-<img width="425" height="835" alt="terminal_output_profiles" src="https://github.com/user-attachments/assets/c41a20a6-bbf3-4676-aa01-e634263bcc28" />
+**VibeFinder 2.0** upgrades the original into an AI-powered RAG (Retrieval-Augmented Generation) pipeline. You describe what you want to listen to in plain English — "something chill for studying late at night" or "upbeat EDM for a workout" — and the system translates your words into music preferences, retrieves the best matches from the catalog, then uses Claude to write a personalized, conversational recommendation explaining exactly why those songs fit your mood. It matters because it bridges the gap between how people actually think about music (feelings and situations) and how computers need to process it (structured features and numbers).
 
 ---
 
-## Getting Started
+## Architecture Overview
 
-### Setup
+```
+                        ┌─────────────────────────────────────────────────┐
+                        │               VibeFinder 2.0                    │
+                        │                  src/main.py                    │
+                        │       (CLI entry point, loads songs.csv)        │
+                        └────────────────────┬────────────────────────────┘
+                                             │
+                          ┌──────────────────▼──────────────────┐
+                          │         src/ai_recommender.py        │
+                          │         RAG Pipeline (3 steps)       │
+                          └──┬───────────────┬──────────────┬───┘
+                             │               │              │
+                ┌────────────▼────┐  ┌───────▼──────┐  ┌───▼──────────────┐
+                │  Step 1: PARSE  │  │Step 2: RETRIEVE│  │Step 3: GENERATE  │
+                │                 │  │               │  │                  │
+                │  User query     │  │ Structured    │  │ Query + top-k    │
+                │  (plain text)   │  │ prefs dict    │  │ songs (context)  │
+                │       ↓         │  │      ↓        │  │        ↓         │
+                │  Claude API     │  │recommend_songs│  │  Claude API      │
+                │  (AI)           │  │ (pure Python) │  │  (AI)            │
+                │       ↓         │  │      ↓        │  │        ↓         │
+                │ {genre, mood,   │  │ Top-k (song,  │  │ Natural language │
+                │  energy} JSON   │  │ score, reason)│  │ response text    │
+                └────────────┬────┘  └───────┬──────┘  └───┬──────────────┘
+                             │               │              │
+                             └───────────────▼──────────────┘
+                                             │
+                        ┌────────────────────▼────────────────────────────┐
+                        │                  OUTPUT                          │
+                        │   AI explanation + ranked song list → terminal   │
+                        │   All steps logged → logs/recommender_YYYYMM... │
+                        └─────────────────────────────────────────────────┘
 
-1. Create a virtual environment (optional but recommended):
+  ┌──────────────────────────────┐     ┌──────────────────────────────────┐
+  │     src/recommender.py       │     │            tests/                │
+  │  (rule-based scoring engine) │     │  test_ai_recommender.py  (7)     │
+  │  load_songs() → songs.csv    │     │  test_recommender.py     (2)     │
+  │  recommend_songs() → top-k   │◄────│  Claude API mocked via            │
+  │  Recommender (OOP class)     │     │  unittest.mock — no key needed   │
+  └──────────────────────────────┘     └──────────────────────────────────┘
+```
+
+**Where AI is involved:** Steps 1 and 3 call the Claude API. Step 2 (retrieval) is pure Python — no AI, fully deterministic, and independently testable.
+
+**Where humans are involved:** The user writes the natural language query. Human judgment is also baked into the scoring weights (genre +2.0, mood +1.0, energy +1.5), which encode assumptions about what features matter most in a recommendation.
+
+**Where testing is involved:** The test suite mocks both Claude API calls so every test runs offline. This separates correctness of the pipeline logic (can be tested automatically) from quality of the AI responses (requires human review of real outputs).
+
+---
+
+## Setup Instructions
+
+### Prerequisites
+
+- Python 3.10 or later
+- An [Anthropic API key](https://console.anthropic.com/)
+
+### Steps
+
+1. **Clone the repository**
+
+   ```bash
+   git clone <your-repo-url>
+   cd applied-ai-system-project
+   ```
+
+2. **Create and activate a virtual environment** (recommended)
 
    ```bash
    python -m venv .venv
-   source .venv/bin/activate      # Mac or Linux
-   .venv\Scripts\activate         # Windows
+   source .venv/bin/activate        # Mac / Linux
+   .venv\Scripts\activate           # Windows
    ```
 
-2. Install dependencies:
+3. **Install dependencies**
 
    ```bash
    pip install -r requirements.txt
    ```
 
-3. Run the recommender:
+4. **Add your API key**
+
+   Create a `.env` file in the project root:
+
+   ```
+   ANTHROPIC_API_KEY=your_api_key_here
+   ```
+
+5. **Run the recommender**
+
+   Default mode — runs four hardcoded listener profiles (no API key needed):
 
    ```bash
    python -m src.main
    ```
 
-### Running Tests
+   AI mode — type any natural language request:
 
-```bash
-pytest
-```
+   ```bash
+   python -m src.main --query "chill music for studying at night"
+   ```
 
----
+   Optional flags:
 
-## Experiments You Tried
+   ```bash
+   python -m src.main --query "upbeat pop" --top 3          # return top 3 instead of 5
+   python -m src.main --query "..." --model claude-sonnet-4-6  # swap model
+   ```
 
-Run all profiles yourself with: `python -m src.main`
+6. **Run the tests**
 
----
+   ```bash
+   pytest -v
+   ```
 
-### Profile 1 — Happy Pop Fan
-
-**Profile:** `{"genre": "pop", "mood": "happy", "energy": 0.8}`
-
-```
-=======================================================
-  Profile: Happy Pop Fan
-  Prefs:   {'genre': 'pop', 'mood': 'happy', 'energy': 0.8}
-=======================================================
-
-  #1: Sunrise City by Neon Echo
-      Genre: pop | Mood: happy | Energy: 0.82
-      Score: 4.47
-      Why:   genre match (+2.0); mood match (+1.0); energy similarity (+1.47)
-
-  #2: Gym Hero by Max Pulse
-      Genre: pop | Mood: intense | Energy: 0.93
-      Score: 3.30
-      Why:   genre match (+2.0); energy similarity (+1.30)
-
-  #3: Rooftop Lights by Indigo Parade
-      Genre: indie pop | Mood: happy | Energy: 0.76
-      Score: 2.44
-      Why:   mood match (+1.0); energy similarity (+1.44)
-
-  #4: Street Cipher by Kade Ramos
-      Genre: hip-hop | Mood: confident | Energy: 0.77
-      Score: 1.46
-      Why:   energy similarity (+1.46)
-
-  #5: Night Drive Loop by Neon Echo
-      Genre: synthwave | Mood: moody | Energy: 0.75
-      Score: 1.42
-      Why:   energy similarity (+1.42)
-```
-
-**Observation:** Genre weight (2.0) dominates the rankings. Sunrise City is a near-perfect match (genre + mood + energy). Gym Hero ranks second despite having the wrong mood because the genre match alone is worth more than a mood match in a different genre. Rooftop Lights places third from mood match alone, "indie pop" doesn't count as a genre match for "pop."
+   All 9 tests run without an API key (Claude is mocked).
 
 ---
 
-### Profile 2 — Chill Lofi Listener
+## Sample Interactions
 
-**Profile:** `{"genre": "lofi", "mood": "chill", "energy": 0.35}`
+### Query 1 — Morning workout
 
 ```
-=======================================================
-  Profile: Chill Lofi Listener
-  Prefs:   {'genre': 'lofi', 'mood': 'chill', 'energy': 0.35}
-=======================================================
+Query: something upbeat and energetic for a morning workout
 
-  #1: Library Rain by Paper Lanterns
-      Genre: lofi | Mood: chill | Energy: 0.35
-      Score: 4.50
-      Why:   genre match (+2.0); mood match (+1.0); energy similarity (+1.50)
+AI Response:
+Perfect for getting pumped up this morning! "Circuit Breaker" by Voltage Drop is your
+top pick — it's got that high-octane EDM energy (0.96!) that'll really get your
+adrenaline going, and "Bass Drop Theory" by Flux Engine is a close second with
+relentless intensity to keep you pushing through those reps. If you want a bit of
+variety, "Gym Hero" by Max Pulse brings that same high-energy vibe with a pop twist
+to maintain momentum throughout your workout!
 
-  #2: Midnight Coding by LoRoom
-      Genre: lofi | Mood: chill | Energy: 0.42
-      Score: 4.40
-      Why:   genre match (+2.0); mood match (+1.0); energy similarity (+1.40)
-
-  #3: Focus Flow by LoRoom
-      Genre: lofi | Mood: focused | Energy: 0.4
-      Score: 3.42
-      Why:   genre match (+2.0); energy similarity (+1.42)
-
-  #4: Spacewalk Thoughts by Orbit Bloom
-      Genre: ambient | Mood: chill | Energy: 0.28
-      Score: 2.40
-      Why:   mood match (+1.0); energy similarity (+1.40)
-
-  #5: Coffee Shop Stories by Slow Stereo
-      Genre: jazz | Mood: relaxed | Energy: 0.37
-      Score: 1.47
-      Why:   energy similarity (+1.47)
+Top Matches:
+  #1: Circuit Breaker by Voltage Drop  | edm | energetic | energy 0.96 | score 4.41
+  #2: Bass Drop Theory by Flux Engine  | edm | intense   | energy 0.94 | score 3.44
+  #3: Storm Runner by Voltline         | rock | intense  | energy 0.91 | score 1.48
+  #4: Gym Hero by Max Pulse            | pop | intense   | energy 0.93 | score 1.46
+  #5: Sunrise City by Neon Echo        | pop | happy     | energy 0.82 | score 1.38
 ```
 
-**Observation:** Both genre and mood match for the top two songs; energy becomes the tiebreaker. Library Rain (energy 0.35) scores a perfect 1.50 energy similarity because it exactly matches the target. The top 3 are all lofi tracks, showing that a well-represented genre dominates the list even when mood doesn't match (#3, Focus Flow).
-
-**Comparison with Happy Pop:** The output is completely different, both genre and energy are on opposite ends of the spectrum. Happy Pop surfaces loud, upbeat tracks; Chill Lofi surfaces quiet, low-energy tracks. This confirms the scoring formula is sensitive to all three features.
+**What happened under the hood:** Claude parsed "upbeat and energetic workout" → `{genre: edm, mood: energetic, energy: 0.95}`. Retrieval scored all 20 songs and returned the two EDM tracks first (strong genre match). Claude then used those retrieved songs as context to write the response.
 
 ---
 
-### Profile 3 — High-Energy EDM Listener
-
-**Profile:** `{"genre": "edm", "mood": "intense", "energy": 0.95}`
+### Query 2 — Rainy afternoon
 
 ```
-=======================================================
-  Profile: High-Energy EDM Listener
-  Prefs:   {'genre': 'edm', 'mood': 'intense', 'energy': 0.95}
-=======================================================
+Query: sad acoustic songs for a rainy afternoon
 
-  #1: Bass Drop Theory by Flux Engine
-      Genre: edm | Mood: intense | Energy: 0.94
-      Score: 4.48
-      Why:   genre match (+2.0); mood match (+1.0); energy similarity (+1.48)
+AI Response:
+I'd definitely start with "Mountain High" by Cedar & Stone and "Library Rain" by Paper
+Lanterns — both have that gentle, acoustic-leaning vibe perfect for a rainy afternoon,
+with low energy that matches the mood you're going for. If you want something with a
+bit more melancholy depth, "Rust and Rain" by The Static Pines has that perfect sad,
+contemplative feel (and the title even captures the rainy day atmosphere!). These three
+should create a really comforting, introspective playlist as you settle in.
 
-  #2: Circuit Breaker by Voltage Drop
-      Genre: edm | Mood: energetic | Energy: 0.96
-      Score: 3.48
-      Why:   genre match (+2.0); energy similarity (+1.48)
-
-  #3: Gym Hero by Max Pulse
-      Genre: pop | Mood: intense | Energy: 0.93
-      Score: 2.47
-      Why:   mood match (+1.0); energy similarity (+1.47)
-
-  #4: Storm Runner by Voltline
-      Genre: rock | Mood: intense | Energy: 0.91
-      Score: 2.44
-      Why:   mood match (+1.0); energy similarity (+1.44)
-
-  #5: Sunrise City by Neon Echo
-      Genre: pop | Mood: happy | Energy: 0.82
-      Score: 1.30
-      Why:   energy similarity (+1.30)
+Top Matches:
+  #1: Mountain High by Cedar & Stone        | folk             | peaceful   | energy 0.33 | score 3.30
+  #2: Rust and Rain by The Static Pines     | alternative rock | melancholy | energy 0.69 | score 1.77
+  #3: Cathedral Echo by Aria Collective     | classical        | peaceful   | energy 0.22 | score 1.47
+  #4: Spacewalk Thoughts by Orbit Bloom     | ambient          | chill      | energy 0.28 | score 1.38
+  #5: Library Rain by Paper Lanterns        | lofi             | chill      | energy 0.35 | score 1.28
 ```
 
-**Observation:** The EDM profile correctly surfaces both EDM tracks first. Positions #3 and #4 are non-EDM songs that share the "intense" mood and high energy, showing that mood + energy can partially substitute for a missing genre match. The Chill Lofi songs disappear entirely from the top 5 because their energy (0.35–0.42) is far from the target of 0.95.
-
-**Comparison with Chill Lofi:** These two profiles produce completely non-overlapping top-5 lists. EDM favors loud, intense tracks with energy near 1.0; Chill Lofi favors quiet, focused tracks with energy near 0.35. This is the clearest demonstration that the energy dimension meaningfully separates different listener types.
+**What happened under the hood:** Claude parsed "sad acoustic rainy afternoon" → `{genre: folk, mood: sad, energy: 0.3}`. Only one folk song exists in the catalog (Mountain High), so the retriever fell back on low-energy songs from other acoustic-adjacent genres. Claude surfaced Library Rain and Rust and Rain in its response even though they ranked lower — demonstrating that the generation step can synthesize across the retrieved list rather than blindly follow the numeric order.
 
 ---
 
-### Profile 4 — Acoustic Folk Listener
-
-**Profile:** `{"genre": "folk", "mood": "peaceful", "energy": 0.3}`
+### Query 3 — Dinner date
 
 ```
-=======================================================
-  Profile: Acoustic Folk Listener
-  Prefs:   {'genre': 'folk', 'mood': 'peaceful', 'energy': 0.3}
-=======================================================
+Query: romantic jazz for a dinner date
 
-  #1: Mountain High by Cedar & Stone
-      Genre: folk | Mood: peaceful | Energy: 0.33
-      Score: 4.46
-      Why:   genre match (+2.0); mood match (+1.0); energy similarity (+1.46)
+AI Response:
+Perfect picks for your dinner date! I'd definitely go with "Coffee Shop Stories" by
+Slow Stereo — it's a smooth jazz track with that relaxed, intimate vibe ideal for
+romantic conversation over dinner. If you want to mix things up slightly, "Neon
+Serenade" by Echo Drift brings a romantic mood with a bit more modern flair, though it
+leans more synthwave than traditional jazz. Both have lower energy levels that won't
+overpower your dinner, letting the music set a warm, date-night atmosphere!
 
-  #2: Cathedral Echo by Aria Collective
-      Genre: classical | Mood: peaceful | Energy: 0.22
-      Score: 2.38
-      Why:   mood match (+1.0); energy similarity (+1.38)
-
-  #3: Spacewalk Thoughts by Orbit Bloom
-      Genre: ambient | Mood: chill | Energy: 0.28
-      Score: 1.47
-      Why:   energy similarity (+1.47)
-
-  #4: Library Rain by Paper Lanterns
-      Genre: lofi | Mood: chill | Energy: 0.35
-      Score: 1.42
-      Why:   energy similarity (+1.42)
-
-  #5: Coffee Shop Stories by Slow Stereo
-      Genre: jazz | Mood: relaxed | Energy: 0.37
-      Score: 1.40
-      Why:   energy similarity (+1.40)
+Top Matches:
+  #1: Coffee Shop Stories by Slow Stereo  | jazz      | relaxed  | energy 0.37 | score 3.46
+  #2: Neon Serenade by Echo Drift         | synthwave | romantic | energy 0.71 | score 2.04
+  #3: Focus Flow by LoRoom                | lofi      | focused  | energy 0.40 | score 1.50
+  #4: Midnight Coding by LoRoom           | lofi      | chill    | energy 0.42 | score 1.47
+  #5: Dusty Porch Blues by Earl Hollow    | blues     | sad      | energy 0.44 | score 1.44
 ```
 
-**Observation:** Only one folk song exists in the catalog, so after the #1 result there are no more genre matches. The remaining slots are filled by low-energy songs from classical, ambient, lofi, and jazz, correct in "vibe" but not in genre. This highlights the small catalog problem: niche genres have only one representative, leaving no diversity in the results.
-
-**Comparison with EDM:** These profiles share zero overlap in their top 5. EDM surfaces high-energy electronic tracks; Folk surfaces quiet acoustic tracks. This pair best illustrates how the energy dimension alone can fully separate listener types even without relying on genre matches.
+**What happened under the hood:** Claude parsed "romantic jazz dinner" → `{genre: jazz, mood: relaxed, energy: 0.4}`. Only one jazz song exists (Coffee Shop Stories), which scored highest. The generation step correctly flagged that Neon Serenade is synthwave rather than jazz — the model was honest about the catalog's limitations rather than over-claiming.
 
 ---
 
-## Limitations and Risks
+## Design Decisions
 
-- **Tiny catalog** — 20 songs means the top result is often the only real match for a niche preference. A real system needs thousands of tracks for meaningful diversity.
-- **Genre dominance** — The +2.0 genre weight is the single biggest factor. A user who gets the genre slightly wrong (e.g., "indie pop" vs "pop") will see dramatically different results.
-- **No collaborative filtering** — The system has no knowledge of what other users liked. It cannot discover that fans of "chill lofi" also enjoy "ambient."
-- **Binary matching** — Genre and mood are treated as either equal or not. There is no concept of genre similarity (rock ≈ alternative rock more than rock ≈ classical).
-- **Static weights** — Everyone gets the same formula. A user who cares deeply about energy but not genre is served poorly.
+### Why RAG instead of a pure LLM?
+
+Asking Claude "what song should I listen to?" with no context produces generic, hallucinated suggestions. Using Claude to parse a query and generate a response, with a deterministic retrieval step in between, grounds the output in actual songs that exist in the catalog. The retriever is the source of truth; Claude is the interpreter and explainer.
+
+### Why keep the rule-based scorer instead of letting Claude do everything?
+
+The rule-based scorer is fast, transparent, and testable. Every recommendation can be fully explained by three numbers. Replacing it with embedding-based semantic search or asking Claude to rank songs directly would make the system a black box and harder to debug. The separation also means the retrieval logic can be tested offline, without touching the API.
+
+### Why Claude Haiku as the default?
+
+Haiku is fast and cheap, and the two tasks it performs (JSON extraction and short-form writing) are well within its capabilities. The model can be swapped at runtime via `--model` without changing any code.
+
+### Trade-offs
+
+| Decision | Benefit | Cost |
+|---|---|---|
+| Rule-based retrieval | Transparent, testable, offline | Binary genre/mood matching — no semantic similarity |
+| Two Claude calls per query | Clean separation of concerns | Slightly higher latency and token cost |
+| 20-song CSV catalog | Easy to inspect and modify | Niche preferences return weak matches |
+| Fixed scoring weights | Predictable behavior | Weights encode developer assumptions, not user data |
+| Fallback on parse failure | System never crashes | Falls back to pop/happy defaults silently |
+
+---
+
+## Testing Summary
+
+**What worked:**
+
+- Mocking the Claude API with `unittest.mock` made the full RAG pipeline testable without an API key or internet access. This meant CI-style testing was possible from day one.
+- Testing the retriever independently from the AI layer caught a scoring bug early (energy clamping wasn't applied before retrieval). Separating the layers paid off immediately.
+- The fallback test (`test_fallback_on_bad_json`) verified that the pipeline degrades gracefully when Claude returns malformed JSON — a realistic failure mode that needed to be intentionally designed for.
+
+**What didn't work at first:**
+
+- The initial mock structure patched `genai.GenerativeModel` but the env-var check ran before the mock was in place, causing unexpected failures. The fix was to use `patch.dict(os.environ, ...)` to inject a fake API key before the client was constructed.
+- The Google Gemini API (`gemma-4`) was explored first but the free-tier credits were exhausted. Switching to Anthropic required rewriting the client layer but the rest of the pipeline was unaffected — a sign that the architecture was reasonably decoupled.
+
+**What I learned about testing AI systems:**
+
+The hardest thing to test is whether the AI response is *good*, not just non-empty. All 9 automated tests verify pipeline structure and logic — correct types, correct call counts, correct genre ranking, correct guardrail behavior. None of them test whether Claude's explanation was actually useful or accurate. That evaluation required reading real outputs by hand. For AI systems, automated testing covers the plumbing; human review covers the quality.
 
 ---
 
 ## Reflection
 
-See [model_card.md](model_card.md) for the full model card.
+Building the original VibeFinder made recommendation engines concrete — they are just a loop with a scoring function, and the "intelligence" is entirely in how well the formula captures what people want. The weights I chose (genre +2.0, mood +1.0) encode assumptions I made as a developer. A user who cares more about mood than genre is systematically disadvantaged by my design, and they would never know why.
 
-Building this recommender made the "loop" structure of recommendation engines very concrete. Every song gets judged independently against the user's preferences and assigned a number. The ranking is just sorting those numbers. What seems "intelligent" in apps like Spotify is really an extremely large and well-tuned version of the same idea, every song in a catalog gets a score, and the highest ones surface.
+Adding the RAG layer taught me a different lesson: AI is most useful as a translation layer between human language and structured data, not as a replacement for deterministic logic. Claude doesn't replace the scorer. It removes the burden of making users express themselves in terms the scorer can understand. That separation — AI for interpretation, code for computation — is a pattern that shows up everywhere in production AI systems.
 
-The place where bias enters is in the weights. Choosing genre weight = 2.0 and mood weight = 1.0 is a design decision that encodes the assumption that genre matters twice as much as mood. In a real product, those weights would be learned from user behavior data, which means they would reflect the preferences of the majority of users, potentially at the expense of users whose tastes don't fit the dominant pattern.
+The moment that most changed how I think about this was the rainy afternoon query. Claude surfaced Library Rain in its response even though it ranked fifth numerically, because the song's name and vibe matched the user's situation better than the top scorer. That kind of contextual judgment is exactly what a rule-based system cannot do. It is also exactly what is hard to test automatically. The gap between "correct by the formula" and "useful to the person" is where the interesting engineering problems live.
