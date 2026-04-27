@@ -14,6 +14,8 @@
 
 ## Architecture Overview
 
+![Music Recommender RAG Architecture](assets/Music_Recommender_RAG_Architecture_3.png)
+
 ```
                         ┌─────────────────────────────────────────────────┐
                         │               VibeFinder 2.0                    │
