@@ -8,6 +8,11 @@ AI / RAG mode : python -m src.main --query "your request in plain English"
 """
 import argparse
 import logging
+import os
+
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from src.logger_setup import setup_logging
 from src.recommender import load_songs, recommend_songs
@@ -37,7 +42,7 @@ def run_profile(name: str, user_prefs: dict, songs: list) -> None:
         print(f"      Why:   {explanation}")
 
 
-def run_ai_query(query: str, songs: list, k: int = 5) -> None:
+def run_ai_query(query: str, songs: list, k: int = 5, model: str = "claude-haiku-4-5-20251001") -> None:
     from src.ai_recommender import get_ai_recommendations
 
     logger.info("AI query mode: %s", query)
@@ -45,7 +50,7 @@ def run_ai_query(query: str, songs: list, k: int = 5) -> None:
     print(f"  Query: {query}")
     print(f"{'='*55}")
 
-    recommendations, ai_response = get_ai_recommendations(query, songs, k=k)
+    recommendations, ai_response = get_ai_recommendations(query, songs, k=k, model=model)
 
     print(f"\n  AI Response:\n  {ai_response}\n")
     print("  Top Matches:")
@@ -73,13 +78,19 @@ def main() -> None:
         metavar="K",
         help="Number of songs to return (default: 5)",
     )
+    parser.add_argument(
+        "--model",
+        type=str,
+        default="claude-haiku-4-5-20251001",
+        help="Claude model ID to use (default: claude-haiku-4-5-20251001)",
+    )
     args = parser.parse_args()
 
     songs = load_songs("data/songs.csv")
     logger.info("Loaded %d songs from catalog", len(songs))
 
     if args.query:
-        run_ai_query(args.query, songs, k=args.top)
+        run_ai_query(args.query, songs, k=args.top, model=args.model)
     else:
         for name, prefs in PROFILES.items():
             run_profile(name, prefs, songs)

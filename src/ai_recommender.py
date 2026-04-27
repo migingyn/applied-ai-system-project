@@ -1,5 +1,5 @@
 """
-RAG-based music recommendation pipeline.
+RAG-based music recommendation pipeline (Anthropic Claude backend).
 
 Flow:
   1. Parse — Claude interprets the user's natural language query into structured preferences
@@ -8,7 +8,7 @@ Flow:
 """
 import json
 import logging
-from typing import Optional
+import os
 
 import anthropic
 
@@ -16,8 +16,6 @@ from src.recommender import recommend_songs
 
 logger = logging.getLogger(__name__)
 
-# Minimum preference-parse cache size note: cache_control is set for future
-# catalog expansion where system prompts will exceed the 1024-token threshold.
 _PARSE_SYSTEM = """\
 You are a music preference parser. Extract structured preferences from a user's natural language music request.
 
@@ -39,12 +37,24 @@ Mention specific song titles and connect them to what the user asked for. Keep i
 
 _FALLBACK_PREFS = {"genre": "pop", "mood": "happy", "energy": 0.5}
 
+_DEFAULT_MODEL = "claude-haiku-4-5-20251001"
+
+
+def _make_client() -> anthropic.Anthropic:
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise EnvironmentError(
+            "ANTHROPIC_API_KEY environment variable is not set. "
+            "Set it or create a .env file (see .env.example)."
+        )
+    return anthropic.Anthropic(api_key=api_key)
+
 
 def get_ai_recommendations(
     user_query: str,
     songs: list,
     k: int = 5,
-    model: str = "claude-haiku-4-5-20251001",
+    model: str = _DEFAULT_MODEL,
 ) -> tuple[list, str]:
     """
     RAG pipeline: returns (recommendations, ai_response_text).
@@ -57,7 +67,7 @@ def get_ai_recommendations(
     if not songs:
         raise ValueError("songs list must not be empty")
 
-    client = anthropic.Anthropic()
+    client = _make_client()
 
     # ── Step 1: Parse ────────────────────────────────────────────────────────
     logger.info("Parsing query (%d chars): %s", len(user_query), user_query[:80])
@@ -92,15 +102,27 @@ def _parse_preferences(client: anthropic.Anthropic, query: str, model: str) -> d
             messages=[{"role": "user", "content": query}],
         )
         raw = response.content[0].text.strip()
+
+        # Strip markdown fences if Claude wraps the JSON
+        if raw.startswith("```"):
+            raw = raw.split("```")[1]
+            if raw.startswith("json"):
+                raw = raw[4:]
+        raw = raw.strip()
+
         logger.debug("Raw preference JSON: %s", raw)
         prefs = json.loads(raw)
 
-        # Guardrail: ensure energy is in [0, 1]
+        # Guardrail: clamp energy to [0, 1]
         prefs["energy"] = max(0.0, min(1.0, float(prefs.get("energy", 0.5))))
         return prefs
 
-    except (json.JSONDecodeError, KeyError, IndexError, anthropic.APIError) as exc:
-        logger.warning("Preference parsing failed (%s: %s); using fallback prefs", type(exc).__name__, exc)
+    except Exception as exc:
+        logger.warning(
+            "Preference parsing failed (%s: %s); using fallback prefs",
+            type(exc).__name__,
+            exc,
+        )
         return dict(_FALLBACK_PREFS)
 
 
@@ -117,7 +139,10 @@ def _generate_response(
         f", match score: {score:.2f}"
         for i, (song, score, _) in enumerate(recommendations, 1)
     )
-    prompt = f'User request: "{user_query}"\n\nRetrieved songs from catalog:\n{songs_context}'
+    prompt = (
+        f'User request: "{user_query}"\n\n'
+        f"Retrieved songs from catalog:\n{songs_context}"
+    )
 
     logger.info("Generating recommendation response")
     try:
@@ -140,9 +165,8 @@ def _generate_response(
     except anthropic.APIError as exc:
         logger.error("Claude API error during generation: %s", exc)
         top = recommendations[0][0] if recommendations else None
-        fallback = (
+        return (
             f'Based on your request, "{top["title"]}" by {top["artist"]} is a strong match.'
             if top
             else "Here are some songs you might enjoy."
         )
-        return fallback
