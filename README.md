@@ -240,6 +240,8 @@ Haiku is fast and cheap, and the two tasks it performs (JSON extraction and shor
 
 ## Testing Summary
 
+> 5 out of 5 integration tests passed against the live Claude API — verifying that high-energy queries return high-energy songs (energy ≥ 0.7), low-energy queries return calm songs (energy ≤ 0.6), a jazz query surfaces the only jazz track in the catalog, and Claude's response always references at least one retrieved song by name. Logging records every step of the pipeline, and errors surface as console warnings with graceful fallback behavior. Human review of 3 live query outputs confirmed that Claude's explanations were accurate and grounded in the retrieved songs, including one case where it correctly flagged a catalog gap rather than overclaiming.
+
 **What worked:**
 
 - Mocking the Claude API with `unittest.mock` made the full RAG pipeline testable without an API key or internet access. This meant CI-style testing was possible from day one.
