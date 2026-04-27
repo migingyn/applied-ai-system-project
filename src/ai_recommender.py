@@ -147,11 +147,28 @@ def _generate_response(
     recommendations: list,
     model: str,
 ) -> str:
-    """Call Claude to produce a natural language recommendation using retrieved songs."""
+    """Call Claude to produce a natural language recommendation using retrieved songs.
+
+    Enriches each song entry with a narrative description from song_descriptions.json
+    (second data source) so Claude can reference specific sonic qualities rather than
+    only genre/mood/energy labels.
+    """
+    descriptions = _load_descriptions()
+
+    def _song_context(i: int, song: dict, score: float) -> str:
+        song_id = str(song.get("id", ""))
+        desc = descriptions.get(song_id, {}).get("description", "")
+        line = (
+            f'  #{i}. "{song["title"]}" by {song["artist"]}'
+            f' — genre: {song["genre"]}, mood: {song["mood"]}, energy: {float(song["energy"]):.2f}'
+            f", match score: {score:.2f}"
+        )
+        if desc:
+            line += f"\n     Context: {desc}"
+        return line
+
     songs_context = "\n".join(
-        f'  #{i}. "{song["title"]}" by {song["artist"]}'
-        f' — genre: {song["genre"]}, mood: {song["mood"]}, energy: {float(song["energy"]):.2f}'
-        f", match score: {score:.2f}"
+        _song_context(i, song, score)
         for i, (song, score, _) in enumerate(recommendations, 1)
     )
     prompt = (
