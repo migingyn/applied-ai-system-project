@@ -12,6 +12,20 @@
 
 ---
 
+## Demo Walkthrough
+
+> **Video:** [Watch the Loom walkthrough](https://www.loom.com/share/REPLACE_WITH_YOUR_LINK)
+
+The video demonstrates three end-to-end queries against the live Claude API:
+
+1. **Morning workout** — `"something upbeat and energetic for a morning workout"` → EDM/high-energy results with AI explanation
+2. **Rainy afternoon** — `"sad acoustic songs for a rainy afternoon"` → folk/low-energy results; Claude surfaces Library Rain contextually despite ranking 5th
+3. **Dinner date** — `"romantic jazz for a dinner date"` → jazz track surfaces first; Claude honestly flags that the 2nd result is synthwave, not jazz
+
+Each query shows the parsed preferences, retrieved songs with scores, and the final AI-generated response.
+
+---
+
 ## Architecture Overview
 
 ![Music Recommender RAG Architecture](assets/Music_Recommender_RAG_Architecture_3.png)
