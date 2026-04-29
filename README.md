@@ -14,7 +14,7 @@
 
 ## Demo Walkthrough
 
-> **Video:** [Watch the presentation and demo](https://screen.studio/share/WJSGakgh?state=uploading)
+> **Video:** [Watch the presentation and demo](https://screen.studio/share/ILdhrR7T)
 
 The video demonstrates three end-to-end queries against the live Claude API:
 
