@@ -14,7 +14,7 @@
 
 ## Demo Walkthrough
 
-> **Video:** [Watch the Loom walkthrough](https://www.loom.com/share/REPLACE_WITH_YOUR_LINK)
+> **Video:** [Watch the presentation and demo](https://screen.studio/share/WJSGakgh?state=uploading)
 
 The video demonstrates three end-to-end queries against the live Claude API:
 
@@ -23,6 +23,16 @@ The video demonstrates three end-to-end queries against the live Claude API:
 3. **Dinner date** — `"romantic jazz for a dinner date"` → jazz track surfaces first; Claude honestly flags that the 2nd result is synthwave, not jazz
 
 Each query shows the parsed preferences, retrieved songs with scores, and the final AI-generated response.
+
+---
+
+## Portfolio
+
+**GitHub:** [https://github.com/migingyn/applied-ai-system-project](https://github.com/migingyn/applied-ai-system-project)
+
+**What this project says about me as an AI engineer:**
+
+VibeFinder 2.0 reflects how I think about building with AI: know exactly which parts of the problem need a model and which parts don't. I deliberately kept the retrieval step as deterministic Python — transparent, testable offline, debuggable with a print statement — and used Claude only where structured computation genuinely falls short: parsing ambiguous human language and generating contextual explanations. The result is a system where every recommendation can be fully traced, the AI layer is independently swappable, and the test suite passes without an API key. I'm most proud of the evaluation design: automated tests verify pipeline structure and guardrail behavior; human review of live outputs verifies quality. Naming that gap explicitly, and building for both, is what I think separates a production-minded AI engineer from someone who ships a demo and calls it done.
 
 ---
 
